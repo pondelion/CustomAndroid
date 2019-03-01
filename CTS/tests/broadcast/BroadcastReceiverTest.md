@@ -1,10 +1,10 @@
 BroadcastReceiverに関するテストは下記。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/cts/tests/tests/content/src/android/content/cts/BroadcastReceiverTest.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/cts/tests/tests/content/src/android/content/cts/BroadcastReceiverTest.java
 
 例として、onReceiveのテストを見てみいく。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/cts/tests/tests/content/src/android/content/cts/BroadcastReceiverTest.java#169
+https://search.siprop.org/android-8.1.0_r1.0/xref/cts/tests/tests/content/src/android/content/cts/BroadcastReceiverTest.java#169
 
 ```Java
     169     public void testOnReceive () throws InterruptedException {
@@ -95,15 +95,15 @@ https://sites.google.com/site/devcollaboration/codesearch
 OpenGrokのFile PathにActivity.javaといれて検索する。
 いくつか出てくるが、アプリからアクセスできる公開API(Android SDKに含まれているもの)の実装は基本的に/frameworks/base/core/java配下にある。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/app/Activity.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/app/Activity.java
 
 sendBroadcastは見当たらず。継承元クラスのContextThemeWrapperを見ていく。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/view/ContextThemeWrapper.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/view/ContextThemeWrapper.java
 
 こちらにも見当たらない。さらに継承元のContextWrapperを見てみる。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/content/ContextWrapper.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/content/ContextWrapper.java
 
 ```Java
     435     @Override
@@ -146,7 +146,7 @@ mBaseは
 
 Contextクラスのインスタンスなので、Contextクラスを見ていく。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/content/Context.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/content/Context.java
 
 ```Java
    1895     public abstract void sendBroadcast(@RequiresPermission Intent intent);
@@ -156,10 +156,10 @@ http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/
 
 OpenGrokでFull Searchに「“extends Context”」、File Pathに「/frameworks/base」と入力して検索してみる。
 
-http://tools.oesf.biz/android-8.1.0_r1.0/search?q="extends+Context"&defs=&refs=&path=%2Fframeworks%2Fbase&hist=
+https://search.siprop.org/android-8.1.0_r1.0/search?q="extends+Context"&defs=&refs=&path=%2Fframeworks%2Fbase&hist=
 
 3つ出てくるが、名前からしても
-http://tools.oesf.biz/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/app/ContextImpl.java
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/app/ContextImpl.java
 が間違いなさそう。
 
 ```Java

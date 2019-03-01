@@ -120,7 +120,7 @@ L135 : 2行以上だった場合、sensitive dataを漏洩している可能性�
 L141 : 1行であり、文字列に「Permission Denial」もしくは「android.permission.DUMP」を含んでいない場合は、sensitive dataを漏洩している可能性があるとしfail。
 
 
-任意サービスのdumpの処理に関するテストなので、いくつかのシステムサービスを例としてみていく
+android.os.ServiceManager#listServiceで得られる任意サービスのdumpの処理に関するテストなので、いくつかのシステムサービスを例としてみていく
 
 - LocationManagerService
 
@@ -181,7 +181,7 @@ https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/services/core/
 
 ※いくつか見るとわかるが、すべてのサービスのdump内で渡されたファイルディスクリプタを用いてファイルに書き込み処理をしているわけではない。
 
-いずれもDumpUtils#checkDumpPermissionを最初にコールしており、これが正常に動作しているかのテストと考えられる。
+いずれもDumpUtils#checkDumpPermissionを最初にコールしており、(AOSPに関しては)これが正常に動作しているかのテストと考えられる。
 falseが返された場合、つまりパーミッションチェックがNGだった場合は即returnし何もファイルにdumpしない。(⇒passルート)
 
 DumpUtils#checkDumpPermissionの処理を見ていく。
@@ -203,4 +203,6 @@ https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/com/
 
 Context#checkCallingOrSelfPermissionのより、呼び出し元がandroid.Manifest.permission.DUMPのパーミッションを持っているかを確認している。
 
-まとめると、今回対象のCTSアプリのような、android.Manifest.permission.DUMPパーミッションは持っていない呼び出し元は、android.os.ServiceManager#listServiceで取得できる全てのサービスに対してdumpを呼び出した際に、上記の様なフローでcheckCallingOrSelfPermissionのパーミッションチェック処理が機能しはじかれ、不正なファイル書き込みを行えないことを期待している。
+まとめると、AOSPに関していえば、今回対象のCTSアプリのような、android.Manifest.permission.DUMPパーミッションは持っていない呼び出し元は、android.os.ServiceManager#listServiceで取得できる全てのサービスに対してdumpを呼び出した際に、上記の様なフローで、checkCallingOrSelfPermissionのパーミッションチェック処理が機能しはじかれ、不正なファイル書き込みを行えないことを期待している。
+
+android.Manifest.permission.DUMPパーミッションを持っている場合についても見ていく。
