@@ -169,6 +169,94 @@ L49~L50で「/system/bin/cat /proc/self/maps」のコマンドを実行し、結
 7ffe4fe000-7ffe51f000 rw-p 00000000 00:00 0                              [stack]
 ```
 
+CTS側に下記のような適当なログ出力処理を入れてCTSをビルドし、ビルドしたCTSを実行して確認してみる。
+
+
+```diff
+    private String readMappingAddress(String mappingName) throws Exception {
++        Log.d(TAG, "readMappingAddress called : " + mappingName);
+        ParcelFileDescriptor pfd = getInstrumentation().getUiAutomation()
+                .executeShellCommand("/system/bin/cat /proc/self/maps");
+
+        String result = null;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new ParcelFileDescriptor.AutoCloseInputStream(pfd)))) {
+            Pattern p = Pattern.compile("^([a-f0-9]+).*" + mappingName + ".*");
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                // Even after a match is found, read until the end to clean up the pipe.
+                if (result != null) continue;
+
+                Matcher m = p.matcher(line);
+
+                if (m.matches()) {
+                    result = m.group(1);
++                    Log.d(TAG, result);
+                }
+            }
+        }
+        return result;
+    }
+```
+
+- ビルド
+```
+[AOSP root dir] $ make cts 
+```
+
+- CTS起動
+```
+[AOSP root dir] $ ./out/host/linux-x86/cts/android-cts/tools/cts-tradefed
+```
+
+- AsirTest#testRandomization実行
+```
+cts-tf > run cts -m CtsSecurityTestCases --test android.security.cts.AslrTest#testRandomization --skip-preconditions
+```
+
+出力されたlogcatファイルのログを見てみる。
+
+```
+01-01 11:58:11.349  3247  3264 D AslrTest: readMappingAddress called : \[stack\]
+...
+01-01 11:58:11.410  3247  3264 I BufffferedReader: 7ffadcc000-7ffaded000 rw-p 00000000 00:00 0                              [stack]
+01-01 11:58:11.410  3247  3264 D AslrTest: 7ffadcc000
+01-01 11:58:11.410  3247  3264 D AslrTest: readMappingAddress called : \[stack\]
+...
+01-01 11:58:11.455  3247  3264 I BufffferedReader: 7fdab93000-7fdabb4000 rw-p 00000000 00:00 0                              [stack]
+01-01 11:58:11.455  3247  3264 D AslrTest: 7fdab93000
+01-01 11:58:11.456  3247  3264 D AslrTest: readMappingAddress called : \[stack\]
+...
+01-01 11:58:11.503  3247  3264 I BufffferedReader: 7fe146a000-7fe148b000 rw-p 00000000 00:00 0                              [stack]
+01-01 11:58:11.504  3247  3264 D AslrTest: 7fe146a000
+...
+```
+
+```
+01-01 11:58:32.998  3247  3264 D AslrTest: readMappingAddress called : /system/bin/
+01-01 11:58:33.018  3247  3264 I BufffferedReader: 55863e7000-5586444000 r-xp 00000000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.018  3247  3264 D AslrTest: 55863e7000
+01-01 11:58:33.018  3247  3264 I BufffferedReader: 5586444000-5586447000 r--p 0005c000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.018  3247  3264 I BufffferedReader: 5586447000-5586449000 rw-p 0005f000 103:09 417                           /system/bin/toybox
+...
+01-01 11:58:33.024  3247  3264 D AslrTest: readMappingAddress called : /system/bin/
+01-01 11:58:33.047  3247  3264 I BufffferedReader: 5564d28000-5564d85000 r-xp 00000000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.047  3247  3264 D AslrTest: 5564d28000
+01-01 11:58:33.047  3247  3264 I BufffferedReader: 5564d85000-5564d88000 r--p 0005c000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.047  3247  3264 I BufffferedReader: 5564d88000-5564d8a000 rw-p 0005f000 103:09 417                           /system/bin/toybox
+...
+01-01 11:58:33.058  3247  3264 D AslrTest: readMappingAddress called : /system/bin/
+01-01 11:58:33.076  3247  3264 I BufffferedReader: 558e82f000-558e88c000 r-xp 00000000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.076  3247  3264 D AslrTest: 558e82f000
+01-01 11:58:33.076  3247  3264 I BufffferedReader: 558e88c000-558e88f000 r--p 0005c000 103:09 417                           /system/bin/toybox
+01-01 11:58:33.077  3247  3264 I BufffferedReader: 558e88f000-558e891000 rw-p 0005f000 103:09 417                           /system/bin/toybox
+...
+```
+
+[stack]と/system/bin/～となってるプロセスの開始アドレスが抜き出されており、後述のcalculateEntropyBitsで何度もコールされるたびに毎回アドレスが異なることが分かる。
+
+
 L90に戻ると、もし上記で一致するものがありresultで返されていれば先へ進み、なければスキップ。
 
 一致するものがあり先へ進んだ場合、L95でcalculateEntropyBitsにmappingNameを渡しコールしている。
