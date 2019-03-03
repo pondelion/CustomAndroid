@@ -281,10 +281,208 @@ calculateEntropyBitsの処理を見ていく。
 87     }
 ```
 
+```java
+44     private static final int aslrMinEntropyBits = 8
+```
+
+なので、L77で2 * (1<<8) = 512回readMappingAddressを同じ引数mappingNameで呼び出し、返ってきたマッピング開始アドレスをキーにHashMapに追加している。
+
+L81で下記式によりエントロピーを計算し、結果を四捨五入したものをリターンしている。
+
+$$  
+\frac{\ln{ユニークなマッピング開始アドレス数}}{\ln{2}}  
+$$  
+
+
+L95に戻ると、L97でentropyがaslrMinEntropyBits(=8)以上であればPASS、それ以外はFAILとなっている。
+
+つまり
+round(ln(マッピングアドレスユニーク数)/ln2) >= 8
+を満たすようなマッピングアドレスユニーク数であればよい。
+
 ---
 
 ### testOneExecutableIsPie
 
+testOneExecutableIsPieを見ていく。
+
+```java
+107     public void testOneExecutableIsPie() throws IOException {
+108         assertTrue(ReadElf.read(new File("/system/bin/cat")).isPIE());
+109     }
+```
+
+名前から/system/bin/cat実行ファイルのELFヘッダを読み込み、それがPIE(Position Independent Executable)であるかをチェックしているテストと推測されるが、中の処理も見ていく。
+
+https://search.siprop.org/android-8.1.0_r1.0/xref/cts/common/util/src/com/android/compatibility/common/util/ReadElf.java
+
+```java
+508     public static ReadElf read(File file) throws IOException {
+509         return new ReadElf(file);
+510     }
+```
+
+```java 
+590     private ReadElf(File file) throws IOException {
+591         mPath = file.getPath();
+592         mFile = new RandomAccessFile(file, "r");
+593 
+594         if (mFile.length() < EI_NIDENT) {
+595             throw new IllegalArgumentException("Too small to be an ELF file: " + file);
+596         }
+597 
+598         readHeader();
+599     }
+```
+
+L592でファイルを読み込み、L594～L596でファイル長がEI_NIDENT(=16)より小さければ、ELFファイルとしては小さすぎるとしてFAIL。
+
+L598でreadHeader()をコールしている。
+
+```java
+618     private void readHeader() throws IOException {
+619         mFile.seek(0);
+620         mFile.readFully(mBuffer, 0, EI_NIDENT);
+621 
+622         if (mBuffer[0] != ELFMAG[0]
+623                 || mBuffer[1] != ELFMAG[1]
+624                 || mBuffer[2] != ELFMAG[2]
+625                 || mBuffer[3] != ELFMAG[3]) {
+626             throw new IllegalArgumentException("Invalid ELF file: " + mPath);
+627         }
+628 
+629         int elfClass = mBuffer[EI_CLASS];
+630         if (elfClass == ELFCLASS32) {
+631             mAddrSize = 4;
+632         } else if (elfClass == ELFCLASS64) {
+633             mAddrSize = 8;
+634         } else {
+635             throw new IOException("Invalid ELF EI_CLASS: " + elfClass + ": " + mPath);
+636         }
+637 
+638         mEndian = mBuffer[EI_DATA];
+639         if (mEndian == ELFDATA2LSB) {
+640         } else if (mEndian == ELFDATA2MSB) {
+641             throw new IOException("Unsupported ELFDATA2MSB file: " + mPath);
+642         } else {
+643             throw new IOException("Invalid ELF EI_DATA: " + mEndian + ": " + mPath);
+644         }
+645 
+646         mType = readHalf();
+647 
+648         int e_machine = readHalf();
+649         if (e_machine != EM_386
+650                 && e_machine != EM_X86_64
+651                 && e_machine != EM_AARCH64
+652                 && e_machine != EM_ARM
+653                 && e_machine != EM_MIPS
+654                 && e_machine != EM_QDSP6) {
+655             throw new IOException("Invalid ELF e_machine: " + e_machine + ": " + mPath);
+656         }
+657 
+658         // AbiTest relies on us rejecting any unsupported combinations.
+659         if ((e_machine == EM_386 && elfClass != ELFCLASS32)
+660                 || (e_machine == EM_X86_64 && elfClass != ELFCLASS64)
+661                 || (e_machine == EM_AARCH64 && elfClass != ELFCLASS64)
+662                 || (e_machine == EM_ARM && elfClass != ELFCLASS32)
+663                 || (e_machine == EM_QDSP6 && elfClass != ELFCLASS32)) {
+664             throw new IOException(
+665                     "Invalid e_machine/EI_CLASS ELF combination: "
+666                             + e_machine
+667                             + "/"
+668                             + elfClass
+669                             + ": "
+670                             + mPath);
+671         }
+672 
+673         long e_version = readWord();
+674         if (e_version != EV_CURRENT) {
+675             throw new IOException("Invalid e_version: " + e_version + ": " + mPath);
+676         }
+677 
+678         long e_entry = readAddr();
+679 
+680         long ph_off = readOff();
+681         long sh_off = readOff();
+682 
+683         long e_flags = readWord();
+684         int e_ehsize = readHalf();
+685         int e_phentsize = readHalf();
+686         int e_phnum = readHalf();
+687         int e_shentsize = readHalf();
+688         int e_shnum = readHalf();
+689         int e_shstrndx = readHalf();
+690 
+691         readSectionHeaders(sh_off, e_shnum, e_shentsize, e_shstrndx);
+692         readProgramHeaders(ph_off, e_phnum, e_phentsize);
+693     }
+```
+
+ヘーダ―読み込みの処理となっている。  
+各処理の深追いはしない。
+
+L108に戻り、メイン処理であるisPIEを見ていく。
+
+```java
+586     public boolean isPIE() {
+587         return mIsPIE;
+588     }
+```
+
+mIsPIEをセットしている処理を見てみると、readProgramHeaders内でセットされていることが分かる。
+
+```java
+809     private void readProgramHeaders(long ph_off, int e_phnum, int e_phentsize) throws IOException {
+810         for (int i = 0; i < e_phnum; ++i) {
+811             mFile.seek(ph_off + i * e_phentsize);
+812 
+813             long p_type = readWord();
+814             if (p_type == PT_LOAD) {
+815                 if (mAddrSize == 8) {
+816                     // Only in Elf64_phdr; in Elf32_phdr p_flags is at the end.
+817                     long p_flags = readWord();
+818                 }
+819                 long p_offset = readOff();
+820                 long p_vaddr = readAddr();
+821                 // ...
+822 
+823                 if (p_vaddr == 0) {
+824                     mIsPIE = true;
+825                 }
+826             }
+827         }
+828     }
+```
+
+このメソッドは、先ほどのヘッダ読み込み処理内のL692でコールされている。
+
+処理を見てみると、e_phnum(プログラムヘッダーテーブル数)分forループし、ファイルポインタをプログラムヘッダーテーブルにセットし、readAddr()で返ってきたアドレス(p_vaddr)が0であればmIsPIEがtrueとなっている。
+
+```java
+1030     private long readAddr() throws IOException {
+1031         return readX(mAddrSize);
+1032     }
+```
+
+```java
+1034     private long readX(int byteCount) throws IOException {
+1035         mFile.readFully(mBuffer, 0, byteCount);
+1036 
+1037         int answer = 0;
+1038         if (mEndian == ELFDATA2LSB) {
+1039             for (int i = byteCount - 1; i >= 0; i--) {
+1040                 answer = (answer << 8) | (mBuffer[i] & 0xff);
+1041             }
+1042         } else {
+1043             final int N = byteCount - 1;
+1044             for (int i = 0; i <= N; ++i) {
+1045                 answer = (answer << 8) | (mBuffer[i] & 0xff);
+1046             }
+1047         }
+1048 
+1049         return answer;
+1050     }
+```
 
 ---
 
