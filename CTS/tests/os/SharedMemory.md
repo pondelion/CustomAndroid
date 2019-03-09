@@ -64,9 +64,11 @@ L113でSharedMemoryを作成、
 L114でShraredMemory#mapReadWriteをコールしbufferを取得、  
 L118でバッファにexpectedである5をput、  
 L119でバッファからget(0)で取り出し、5であることを確認、  
-L122で、SharedMemoryと紐づけたPeerConnectionを通じてread(0)で値を取得し、5であることを確認、  
+L122で、SharedMemoryと紐づけたSharedMomoryService(※1)とのPeerConnectionを通じてread(0)で値を取得し、5であることを確認、  
 L123～124で、expectedに10を代入し、PeerConnection経由でwriteで書き込み、  
 L125でbufferから直接get(0)で値を取り出し10であることを確認。  
+
+※1 : https://search.siprop.org/android-8.1.0_r1.0/xref/cts/tests/tests/os/src/android/os/cts/SharedMemoryService.java#28
   
 テスト対象機能であるSharedMemory#mapReadWriteの処理の詳細を見ていく。  
 
