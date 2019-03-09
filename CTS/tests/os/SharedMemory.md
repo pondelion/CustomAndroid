@@ -59,18 +59,18 @@ testReadWrite
 103     }
 ```
 
-全体的な流れとしては、
-L113でSharedMemoryを作成、
-L114でShraredMemory#mapReadWriteをコールしbufferを取得、
-L118でバッファにexpectedである5をput、
-L119でバッファからget(0)で取り出し、5であることを確認、
-L122で、SharedMemoryと紐づけたPeerConnectionを通じてread(0)で値を取得し、5であることを確認、
-L123～124で、expectedに10を代入し、PeerConnection経由でwriteで書き込み、
-L125でbufferから直接get(0)で値を取り出し10であることを確認。
+全体的な流れとしては、  
+L113でSharedMemoryを作成、  
+L114でShraredMemory#mapReadWriteをコールしbufferを取得、  
+L118でバッファにexpectedである5をput、  
+L119でバッファからget(0)で取り出し、5であることを確認、  
+L122で、SharedMemoryと紐づけたPeerConnectionを通じてread(0)で値を取得し、5であることを確認、  
+L123～124で、expectedに10を代入し、PeerConnection経由でwriteで書き込み、  
+L125でbufferから直接get(0)で値を取り出し10であることを確認。  
+  
+テスト対象機能であるSharedMemory#mapReadWriteの処理の詳細を見ていく。  
 
-テスト対象機能であるSharedMemory#mapReadWriteの処理の詳細を見ていく。
-
-https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/os/SharedMemory.java#mapReadWrite
+https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/android/os/SharedMemory.java#mapReadWrite  
 
 ```java
 181     public @NonNull ByteBuffer mapReadWrite() throws ErrnoException {
@@ -96,14 +96,14 @@ https://search.siprop.org/android-8.1.0_r1.0/xref/frameworks/base/core/java/andr
 229     }
 ```
 
-mapReadWrite内ではmapメソッドをコールしており、map内を見るとL225のOs#mmapでメモリを確保しアドレスを取得しているとみられる。
+mapReadWrite内ではmapメソッドをコールしており、map内を見るとL225のOs#mmapでメモリを確保しアドレスを取得しているとみられる。  
 
 https://search.siprop.org/android-8.1.0_r1.0/xref/libcore/luni/src/main/java/android/system/Os.java#mmap
 ```java
 336   public static long mmap(long address, long byteCount, int prot, int flags, FileDescriptor fd, long offset) throws ErrnoException { return Libcore.os.mmap(address, byteCount, prot, flags, fd, offset); }
 ```
 
-Javaの標準ライブラリ機能Libcore.os.mmapをコール
+Javaの標準ライブラリ機能Libcore.os.mmapをコール  
 
 https://search.siprop.org/android-8.1.0_r1.0/xref/libcore/luni/src/main/java/libcore/io/Libcore.java
 ```java
@@ -134,15 +134,15 @@ https://search.siprop.org/android-8.1.0_r1.0/xref/libcore/luni/src/main/java/lib
 133     public long mmap(long address, long byteCount, int prot, int flags, FileDescriptor fd, long offset) throws ErrnoException { return os.mmap(address, byteCount, prot, flags, fd, offset); }
 ```
 
-コンストラクタで渡されたOSのmmapが呼ばれている。
-コンストラクタで渡されているのは、前述のLibcore.javaをみるとLinuxクラスのインスタンスなので、Linuxクラスをみていく。
+コンストラクタで渡されたOSのmmapが呼ばれている。  
+コンストラクタで渡されているのは、前述のLibcore.javaをみるとLinuxクラスのインスタンスなので、Linuxクラスをみていく。  
 
 https://search.siprop.org/android-8.1.0_r1.0/xref/libcore/luni/src/main/java/libcore/io/Linux.java
 ```java
 124     public native long mmap(long address, long byteCount, int prot, int flags, FileDescriptor fd, long offset) throws ErrnoException;
 ```
 
-ネイティブメソッドになっている。
+ネイティブメソッドになっている。  
 
 https://search.siprop.org/android-8.1.0_r1.0/xref/libcore/luni/src/main/native/libcore_io_Linux.cpp
 ```cpp
