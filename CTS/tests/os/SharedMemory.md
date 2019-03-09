@@ -62,9 +62,10 @@ testReadWrite
 全体的な流れとしては、  
 L113でSharedMemoryを作成、  
 L114でShraredMemory#mapReadWriteをコールしbufferを取得、  
+L115でSharedMomoryService#setUp(※1)でSharedMemoryServiceにsharedMemoryを渡し、
 L118でバッファにexpectedである5をput、  
 L119でバッファからget(0)で取り出し、5であることを確認、  
-L122で、SharedMemoryと紐づけたSharedMomoryService(※1)とのPeerConnectionを通じてread(0)で値を取得し、5であることを確認、  
+L122で、SharedMomoryService#read(0)で値を取得し、5であることを確認、  
 L123～124で、expectedに10を代入し、PeerConnection経由でwriteで書き込み、  
 L125でbufferから直接get(0)で値を取り出し10であることを確認。  
 
